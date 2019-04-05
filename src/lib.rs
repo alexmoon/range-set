@@ -442,6 +442,29 @@ impl <A, T> RangeSet <A> where
     }
   }
 
+  /// Returns an iterator over the [`RangeInclusive<T>`]s of a range set.
+  ///
+  /// As a range set consists of ranges of adjacent elements, we can
+  /// iterate through those ranges. This method returns such an iterator.
+  ///
+  /// ```
+  /// # use range_set::RangeSet;
+  /// # use std::ops::RangeInclusive;
+  /// let mut s = RangeSet::<[RangeInclusive <u32>; 2]>::from (0..=5);
+  /// s.insert(6);
+  /// s.insert(8);
+  /// s.insert_range(10..=20);
+  /// 
+  /// let mut ranges = s.ranges();
+  /// 
+  /// assert_eq!(Some(&(0..=6)), ranges.next());
+  /// assert_eq!(Some(&(8..=8)), ranges.next());
+  /// assert_eq!(Some(&(10..=20)), ranges.next());
+  /// assert_eq!(None, ranges.next());
+  pub fn ranges (&self) -> std::slice::Iter<std::ops::RangeInclusive<T>> {
+    self.ranges.iter()
+  }
+
   /// Tests a raw smallvec of ranges for validity as a range set: the element
   /// ranges must be properly disjoint (not adjacent) and sorted.
   ///
