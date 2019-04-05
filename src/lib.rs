@@ -63,6 +63,16 @@ pub struct Iter <'a, A, T> where
   range       : std::ops::RangeInclusive <T>
 }
 
+pub struct IntoIter <A, T> where
+  A : smallvec::Array <Item=std::ops::RangeInclusive <T>>
+    + Eq + std::fmt::Debug,
+  T : PrimInt + std::fmt::Debug
+{
+  range_set   : RangeSet <A>,
+  range_index : usize,
+  range       : std::ops::RangeInclusive <T>
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 //  functions                                                                //
 ///////////////////////////////////////////////////////////////////////////////
@@ -648,6 +658,16 @@ impl <A, T> RangeSet <A> where
   }
 }
 
+impl<A, T> Default for RangeSet <A> where
+  A : smallvec::Array <Item=std::ops::RangeInclusive <T>>
+    + Eq + std::fmt::Debug,
+  T : PrimInt + std::fmt::Debug
+{
+  fn default() -> RangeSet <A> {
+    RangeSet::new()
+  }
+}
+
 impl <A, T> From <std::ops::RangeInclusive <T>> for RangeSet <A> where
   A : smallvec::Array <Item=std::ops::RangeInclusive <T>>
     + Eq + std::fmt::Debug,
@@ -663,7 +683,86 @@ impl <A, T> From <std::ops::RangeInclusive <T>> for RangeSet <A> where
   }
 }
 
+impl <A, T> std::iter::FromIterator<T> for RangeSet<A> where
+  A : smallvec::Array <Item=std::ops::RangeInclusive <T>>
+    + Eq + std::fmt::Debug,
+  T : PrimInt + std::fmt::Debug
+{
+  fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> RangeSet<A> {
+    let mut set = RangeSet::new();
+    set.extend(iter);
+    set
+  }
+}
+
+impl <A, T> Extend<T> for RangeSet<A> where
+  A : smallvec::Array <Item=std::ops::RangeInclusive <T>>
+    + Eq + std::fmt::Debug,
+  T : PrimInt + std::fmt::Debug
+{
+  fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
+    for x in iter {
+      self.insert(x);
+    }
+  }
+}
+
+impl <'a, A, T> IntoIterator for &'a RangeSet <A> where
+  A : 'a + smallvec::Array <Item=std::ops::RangeInclusive <T>>
+    + Eq + std::fmt::Debug,
+  T : 'a + PrimInt + std::fmt::Debug,
+  std::ops::RangeInclusive <T> : Clone + Iterator <Item=T>
+{
+  type Item = T;
+  type IntoIter = Iter<'a, A, T>;
+
+  fn into_iter(self) -> Iter<'a, A, T> {
+    self.iter()
+  }
+}
+
+impl <A, T> IntoIterator for RangeSet <A> where
+  A : smallvec::Array <Item=std::ops::RangeInclusive <T>>
+    + Eq + std::fmt::Debug,
+  T : PrimInt + std::fmt::Debug,
+  std::ops::RangeInclusive <T> : Clone + Iterator <Item=T>
+{
+  type Item = T;
+  type IntoIter = IntoIter<A, T>;
+
+  fn into_iter(self) -> IntoIter<A, T> {
+    IntoIter {
+      range_set:   self,
+      range_index: 0,
+      range:       T::one()..=T::zero()
+    }
+  }
+}
+
 impl <'a, A, T> Iterator for Iter <'a, A, T> where
+  A : smallvec::Array <Item=std::ops::RangeInclusive <T>>
+    + Eq + std::fmt::Debug,
+  T : PrimInt + std::fmt::Debug,
+  std::ops::RangeInclusive <T> : Clone + Iterator <Item=T>
+{
+  type Item = T;
+  fn next (&mut self) -> Option <Self::Item> {
+    if let Some (t) = self.range.next() {
+      Some (t)
+    } else {
+      if self.range_index < self.range_set.ranges.len() {
+        self.range = self.range_set.ranges[self.range_index].clone();
+        debug_assert!(!is_empty (&self.range));
+        self.range_index += 1;
+        self.range.next()
+      } else {
+        None
+      }
+    }
+  }
+}
+
+impl <A, T> Iterator for IntoIter <A, T> where
   A : smallvec::Array <Item=std::ops::RangeInclusive <T>>
     + Eq + std::fmt::Debug,
   T : PrimInt + std::fmt::Debug,
