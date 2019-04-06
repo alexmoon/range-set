@@ -5,6 +5,9 @@ extern crate smallvec;
 
 pub mod range_compare;
 
+#[cfg(test)]
+mod tests;
+
 pub use range_compare::{
   RangeCompare, RangeDisjoint, RangeIntersect,
   range_compare, intersection, is_empty
@@ -325,8 +328,8 @@ impl <A, T> RangeSet <A> where
           self.ranges[0] =
             std::cmp::min (*range.start(), *self.ranges[0].start())..=
             std::cmp::max (*range.end(), *self.ranges[after-1].end());
-          for i in 0..after {
-            self.ranges[i+1] = self.ranges[after + i].clone();
+          for i in after..self.ranges.len() {
+            self.ranges[i-after+1] = self.ranges[i].clone();
           }
           let new_len = self.ranges.len() - after + 1;
           self.ranges.truncate (new_len);
